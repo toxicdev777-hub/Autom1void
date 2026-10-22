@@ -1,0 +1,211 @@
+-- language: Luau, file: fruit_void_button.lua, target: Roblox Executor
+-- *Loop idêntico ao RJR: GetMaxCombo + voidVec + FireServer(0.3s). Toque/mouse em qualquer área do botão.*
+
+local Players          = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local LocalPlayer      = Players.LocalPlayer
+local PlayerGui        = LocalPlayer:WaitForChild("PlayerGui")
+
+--======================= FRUIT VOID (igual RJR) =======================
+local VoidM1Enabled = false
+local voidVec       = Vector3.new(9e30, 9e30, 9e30)
+local VoidThread    = nil
+
+local function GetPlayerFruit()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    for _, tool in pairs(char:GetChildren()) do
+        if tool:IsA("Tool") and tool.ToolTip == "Blox Fruit" then
+            return tool
+        end
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.ToolTip == "Blox Fruit" then
+                return tool
+            end
+        end
+    end
+    return nil
+end
+
+local function GetMaxCombo(tool)
+    if not tool then return 5 end
+    local n = tool.Name
+    if n == "T-Rex-T-Rex" then return 4 end
+    if n == "Blade-Blade" then return 2 end
+    if n == "Pain-Pain" then return 4 end
+    if n == "Control-Control" then return 4 end
+    if n == "Gas-Gas" then return 5 end
+    if n == "Dragon-Dragon" then
+        local char = LocalPlayer.Character
+        return (char and char:FindFirstChild("DragonHybrid")) and 5 or 3
+    end
+    return 5
+end
+
+local function SetVoidFruitM1Enabled(enabled)
+    if VoidThread then
+        task.cancel(VoidThread)
+        VoidThread = nil
+    end
+    if not enabled then return end
+    VoidThread = task.spawn(function()
+        while VoidM1Enabled do
+            task.wait(0.3)
+            local fruit = GetPlayerFruit()
+            local remote = fruit and fruit:FindFirstChild("LeftClickRemote")
+            if not remote then continue end
+            local maxCombo = GetMaxCombo(fruit)
+            pcall(function() remote:FireServer(voidVec, maxCombo, true) end)
+        end
+    end)
+end
+
+--======================= GUI =======================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FruitVoidToggle"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 999
+ScreenGui.Parent = PlayerGui
+
+-- área clicável maior que o visual (para pegar o toque em qualquer lugar)
+local Hitbox = Instance.new("TextButton")
+Hitbox.Name = "Hitbox"
+Hitbox.Size = UDim2.fromOffset(180, 72)
+Hitbox.Position = UDim2.new(0, 20, 0.5, -36)
+Hitbox.BackgroundTransparency = 1
+Hitbox.Text = ""
+Hitbox.AutoButtonColor = false
+Hitbox.Active = true
+Hitbox.Draggable = false
+Hitbox.Parent = ScreenGui
+
+-- botão visual (fica dentro do hitbox)
+local Button = Instance.new("Frame")
+Button.Name = "Btn"
+Button.Size = UDim2.fromOffset(160, 56)
+Button.Position = UDim2.new(0.5, 0, 0.5, 0)
+Button.AnchorPoint = Vector2.new(0.5, 0.5)
+Button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Button.BorderSizePixel = 0
+Button.Parent = Hitbox
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 14)
+corner.Parent = Button
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255, 60, 60)
+stroke.Transparency = 0
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+stroke.Parent = Button
+
+local glow = Instance.new("UIStroke")
+glow.Thickness = 6
+glow.Color = Color3.fromRGB(255, 60, 60)
+glow.Transparency = 0.7
+glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+glow.Parent = Button
+
+local label = Instance.new("TextLabel")
+label.Size = UDim2.new(1, -40, 1, 0)
+label.Position = UDim2.new(0, 14, 0, 0)
+label.BackgroundTransparency = 1
+label.Font = Enum.Font.GothamBold
+label.TextSize = 15
+label.TextColor3 = Color3.fromRGB(255, 255, 255)
+label.TextXAlignment = Enum.TextXAlignment.Left
+label.Text = "FRUIT VOID"
+label.Parent = Button
+
+local dot = Instance.new("Frame")
+dot.Size = UDim2.fromOffset(12, 12)
+dot.Position = UDim2.new(1, -26, 0.5, -6)
+dot.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+dot.BorderSizePixel = 0
+dot.Parent = Button
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = dot
+
+local dotStroke = Instance.new("UIStroke")
+dotStroke.Thickness = 1.5
+dotStroke.Color = Color3.fromRGB(255, 255, 255)
+dotStroke.Transparency = 0.5
+dotStroke.Parent = dot
+
+--======================= CORES =======================
+local C_ON      = Color3.fromRGB(80, 255, 140)
+local C_OFF     = Color3.fromRGB(255, 60, 60)
+local C_BG_ON   = Color3.fromRGB(18, 40, 25)
+local C_BG_OFF  = Color3.fromRGB(25, 25, 25)
+
+--======================= ANIMAÇÃO =======================
+local PulseT = 0
+RunService.RenderStepped:Connect(function(dt)
+    PulseT += dt
+    local base = (math.sin(PulseT * 3) + 1) * 0.5
+    local targetColor = VoidM1Enabled and C_ON or C_OFF
+
+    stroke.Color = targetColor
+    glow.Color   = targetColor
+    dot.BackgroundColor3 = targetColor
+
+    glow.Transparency   = 0.55 + base * 0.25
+    stroke.Transparency = 0.15 + base * 0.2
+    dotStroke.Transparency = 0.4 + base * 0.3
+
+    Button.BackgroundColor3 = Button.BackgroundColor3:Lerp(
+        VoidM1Enabled and C_BG_ON or C_BG_OFF, math.min(dt * 6, 1)
+    )
+end)
+
+--======================= TOGGLE =======================
+local function Toggle()
+    VoidM1Enabled = not VoidM1Enabled
+    label.Text = VoidM1Enabled and "FRUIT VOID · ON" or "FRUIT VOID"
+    SetVoidFruitM1Enabled(VoidM1Enabled)
+end
+
+-- TextButton já dispara Activated pra mouse E touch automaticamente
+Hitbox.Activated:Connect(Toggle)
+
+--======================= ARRASTAR (opcional) =======================
+local dragging, dragStart, startPos = false, nil, nil
+
+Hitbox.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        -- se segurar e mover > 6px, vira drag; senão é clique (o Activated cuida)
+        dragging = true
+        dragStart = input.Position
+        startPos = Hitbox.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+                     or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        if math.abs(delta.X) > 6 or math.abs(delta.Y) > 6 then
+            Hitbox.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
